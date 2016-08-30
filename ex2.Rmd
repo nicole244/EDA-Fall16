@@ -1,0 +1,35 @@
+---
+title: "Exercise 2"
+author: "Nicole Navarro"
+date: "August 28, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Download Reed college data
+
+```{R, eval=FALSE}
+url<- "http://www.cs.washington.edu/research/xmldatasets/data/courses/reed.xml"
+library(XML)
+ReedCourseData_df <- xmlToDataFrame(url)
+```
+
+#Examining the data
+
+The following will find the number of unique subjects listed in the document:
+```{R, eval=FALSE}
+length(unique(ReedCourseData_df$subj))
+```
+
+The following will find the number of courses that have no instructor listed:
+```{R, eval=FALSE}
+length(which(ReedCourseData_df$instructor == ""))
+```
+
+The following will find the number of unique instructors listed:
+```{R, eval=FALSE}
+length(which(unique(ReedCourseData_df$instructor) != ""))
+```
