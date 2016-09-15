@@ -1,0 +1,88 @@
+---
+title: "Exercise 3"
+author: "Nicole Navarro"
+date: "September 1, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{R, eval=TRUE}
+url<-"https://archive.ics.uci.edu/ml/machine-learning-databases/00296/dataset_diabetes.zip"
+
+diabetesData<-read.csv("~/School/fall 16/EDA/data/diabetic_data.csv")
+diabetesCodebook<-read.csv("~/School/fall 16/EDA/data/IDs_mapping.csv")
+
+diabetesData[diabetesData == "?"]<- NA
+completeCases<-complete.cases(diabetesData)
+sum(completeCases)
+
+ad_missing1<-(length(which(diabetesData$admission_type_id == 5)) + length(which(diabetesData$admission_type_id == 6)) + length(which(diabetesData$admission_type_id == 8)))
+
+ad_missing2<-sum(is.na(diabetesData$admission_type_id))
+
+dis_missing1<-(length(which(diabetesData$discharge_disposition_id == 18)) + length(which(diabetesData$discharge_disposition_id == 25)) + length(which(diabetesData$discharge_disposition_id == 26)))
+
+dis_missing2<-sum(is.na(diabetesData$discharge_disposition_id))
+
+p_ER_adm<-100*length(which(diabetesData$admission_type_id == 1))/length(diabetesData$admission_type_id)
+
+p_ER_Exp<-100*length(which((diabetesData$admission_type_id == 1) & (diabetesData$discharge_disposition_id == 11)))/nrow(diabetesData)
+
+exp_prob<-p_ER_Exp/p_ER_adm
+```
+
+###2. Document any missing values in the data.
+
+For this exercise we are concerned with the data on Admission and Discharge type  
+
+
+#####Admission Type:
+
+* There are `r paste(ad_missing2)` rows with no entry
+
+* There are `r paste(ad_missing1)` rows with non-response entries (Not Available, NULL, Not Mapped)  
+
+#####Discharge Type:
+
+* There are `r paste(dis_missing2)` rows with no entry
+
+* There are `r paste(dis_missing1)` rows with non-response entries(NULL, Not Mapped, Unknown/Invalid)
+
+
+###3. What percentage of patients are admitted from the emergency room? Given a patient is admitted from the emergency room, what is the probability that their discharge status will be "expired"? 
+
+* `r paste(p_ER_adm)`% of patients are admitted from the emergency room.
+* The probability of a patient's discharge status being "expired" if they were admitted from the emergency room is `r paste(exp_prob)`
+
+###4. What is the most frequent admission status? What is the most frequent discharge status? For the most frequent admission status, what is the most frequent discharge status? 
+
+```{R, eval=TRUE}
+
+Mode <- function(x, na.rm = FALSE) {
+  if(na.rm){
+    x = x[!is.na(x)]
+  }
+
+  ux <- unique(x)
+  return(ux[which.max(tabulate(match(x, ux)))])
+}
+
+freq<-apply(diabetesData[,c('admission_type_id','discharge_disposition_id')],2,Mode)
+
+ad_types<-diabetesCodebook[2:9,2]
+dis_types<-diabetesCodebook[12:41,2]
+
+emergency_ad_data<-diabetesData[which(diabetesData$admission_type_id == 1),]
+emergency_dis_mode<-apply(emergency_ad_data[,c('admission_type_id','discharge_disposition_id')],2,Mode)
+```
+
+* The most frequent admission status is `r paste(ad_types[freq[['admission_type_id']]])`
+
+* The most frequent discharge status is `r paste(dis_types[freq[['discharge_disposition_id']]])`
+
+* The most frequent discharge status, with `r paste(ad_types[freq[['admission_type_id']]])` as the admission status is `r paste(emergency_dis_mode[['discharge_disposition_id']])`
