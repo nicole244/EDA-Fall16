@@ -1,0 +1,40 @@
+---
+title: "ex4"
+author: "Nicole Navarro"
+date: "September 19, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{R, include=FALSE, eval=TRUE}
+diabetesData<-read.csv("~/School/fall 16/EDA/data/diabetic_data.csv")
+diabetesCodebook<-read.csv("~/School/fall 16/EDA/data/IDs_mapping.csv")
+diabetesData[diabetesData == '?']<-NA
+```
+
+The ability to predict discharge status using the available data will depend on which variables you plan to use. Different variables in the data have vastly differing levels of completeness. The completeness of variables can be examined using the following method.
+
+
+We can check the number of cases which are complete across all variables, and we see that only about 1% of the cases are complete across all variables.
+```{R, eval=TRUE}
+complete_cases<-complete.cases(diabetesData)
+100*sum(complete_cases)/nrow(diabetesData)
+```
+
+We can also check for completeness in subsets of the data. For example we can check the completeness of admission type, discharge disposition, and admission source, and we see that 100% of the cases are complete with regards to these variables.
+```{R, eval=TRUE}
+complete_cases<-complete.cases(diabetesData[,7:9])
+100*sum(complete_cases)/nrow(diabetesData)
+```
+
+So far we have only tested for complete cases with no missing data, but there are also situations where data was input that means the information is not available. For admission type, this is shown by responses containing NULL, Not Available, and Not Mapped. We can also check the percentage of the data not containing non-response data. We see that almost 90% of the data contains a response for this variable.
+```{R, eval=TRUE}
+ad_type_clean<-which((diabetesData$admission_type_id!=5) & (diabetesData$admission_type_id !=6) & (diabetesData$admission_type_id != 8))
+clean_data<-diabetesData[ad_type_clean,]
+100*nrow(clean_data)/nrow(diabetesData)
+```
+
+We can combine all of these techniques to examine the completeness of the different variables in the data and assess whether or not it is possible to create a prediction study. We can also use this information to see which variables should be included in the prediction study, and which are too irregular to be useful.
