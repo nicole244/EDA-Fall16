@@ -1,0 +1,447 @@
+---
+title: "Exercise 10"
+author: "Nicole Navarro"
+date: "November 14, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+library(dplyr)
+library(tidyverse)
+library(xlsx)
+library(reshape2)
+```
+
+
+#Crime data
+
+```{r, echo=TRUE}
+#import data
+filenames <- list.files("~/School/Fall 16/EDA/data/FDLE", 
+                        pattern="*.xls", full.names=TRUE)
+
+ldf <- lapply(filenames, function(x) 
+  read.xlsx(x, sheetName ="Part II (1)", startRow=3))
+
+CNames <- names(as.data.frame(ldf[1]))
+Alachua_label <- lapply(ldf, function(x) 
+  which((x[,1] == "Alachua County") | (x[,1] =="Alachua") ))
+Washington_label <- lapply(ldf, function(x) 
+  which((x[,1] == "Washington County") | (x[,1] == "Washington") ))
+
+#check completeness
+unlist(Washington_label)-unlist(Alachua_label)
+```
+
+```{r}
+#get rid of col names (because they don't all match)
+NULL_Name <- function(x) {
+  names(x) <- NULL
+  return(x)
+}
+ldf <- lapply(ldf, NULL_Name)
+```
+
+```{r}
+#combine all years into one data frame
+L<- length(as.data.frame(ldf[1])[1,])
+FL_Crime_0612 <- as.data.frame(ldf[1])[Alachua_label: 
+                                         Washington_label,]
+for (i in 2:length(ldf)) {
+  FL_Crime_0612 <- rbind(FL_Crime_0612, 
+                         as.data.frame(ldf[i])[Alachua_label[[i]]: 
+                                         Washington_label[[i]],1:L])
+}
+
+FL_Crime_0612 <- as.data.frame(FL_Crime_0612)
+names(FL_Crime_0612) <-CNames
+str(FL_Crime_0612)
+```
+
+```{r}
+#clean up county names
+FL_Crime_0612[,1] <- as.factor(gsub("\\ County", "", FL_Crime_0612[,1]))
+FL_Crime_0612[,1] <- as.factor(gsub("Desoto", "DeSoto", FL_Crime_0612[,1]))
+
+FL_Crime_0612[,2:length(FL_Crime_0612[1,])] <- sapply(FL_Crime_0612[,2:length(FL_Crime_0612[1,])], as.integer)
+
+start <- rep(2006,67)
+FL_Crime_0612$Year <- c(start,start+1,start+2,start+3,start+4,start+5,start+6)
+colnames(FL_Crime_0612)[1] <- "County"
+str(FL_Crime_0612)
+```
+
+```{r,eval=FALSE}
+#save cleaned up version to csv
+write.csv(FL_Crime_0612, "~/School/Fall 16/EDA/data/FDLE/FL_Crime_0612.csv")
+```
+
+
+#Educational Attainment Data
+
+```{r}
+#import data
+filenames2 <- list.files("~/School/Fall 16/EDA/data/FLedu", pattern="*.csv", full.names=TRUE)
+
+ldf2 <- lapply(filenames2, function(x) 
+  read.csv(x, skip=1))
+
+
+#combine into one frame
+Cnames <- c("County","pop25up","HS25up","bachelors25up")
+FL_edu_0912 <- as.data.frame(ldf2[1])[c(3,34,82,88)]
+names(FL_edu_0912)<-Cnames
+for (i in 2:length(ldf2)) {
+  data <- as.data.frame(ldf2[i])[c(3,34,82,88)]
+  names(data) <- Cnames
+  FL_edu_0912 <- rbind(FL_edu_0912, data)
+}
+
+FL_edu_0912 <- as.data.frame(FL_edu_0912)
+str(FL_edu_0912)
+
+```
+
+
+```{r}
+#clean up county names
+FL_edu_0912[,1] <- as.factor(gsub("\\ County, Florida", "", FL_edu_0912[,1]))
+FL_edu_0912[,1] <- as.factor(gsub("Miami-Dade", "Miami Dade", FL_edu_0912[,1]))
+
+FL_edu_0912[,2:length(FL_edu_0912[1,])] <- sapply(FL_edu_0912[,2:length(FL_edu_0912[1,])], as.numeric)
+
+
+start <- rep(2009,67)
+FL_edu_0912$Year <- c(start,start+1,start+2,start+3)
+str(FL_edu_0912)
+```
+
+#Unemployment data
+
+```{r}
+#import data
+filenames <- list.files("~/School/Fall 16/EDA/data/FLlabor", pattern="*.xls", full.names=TRUE)
+
+#Read in only the data we want
+ldf <- lapply(filenames, function(x) read.xlsx2(x, sheetIndex =1))
+ldf <- lapply(ldf, function(x) x <- x[,c(4,5,10)])
+
+CNames <- c("County","Year", "Unemployment_Rate") ##Future column names
+
+Alachua_label <- lapply(ldf, function(x) grep("Alachua", x[,1])) ##starting lines in each frame
+Washington_label <- lapply(ldf, function(x) grep("Washington County, FL", x[,1])) ##starting lines in each frame
+
+ldf <- lapply(ldf, NULL_Name)  ##Naming tricks
+
+#create data frame
+FL_Unemployment_0612 <- as.data.frame(ldf[1])[Alachua_label[[1]]: 
+                                         (Washington_label[[1]]),]
+
+for (i in 2:length(ldf)) {
+  FL_Unemployment_0612 <- rbind(FL_Unemployment_0612,
+                         as.data.frame(ldf[i])[Alachua_label[[i]]:
+                                         (Washington_label[[i]]),])
+}
+FL_Unemployment_0612 <- as.data.frame(FL_Unemployment_0612)
+names(FL_Unemployment_0612) <-CNames
+str(FL_Unemployment_0612)
+
+```
+
+
+```{r,echo=TRUE}
+#clean up data frames
+
+FL_Unemployment_0612[,1] <- as.factor(gsub("\\ County, FL", "", FL_Unemployment_0612[,1]))
+FL_Unemployment_0612[,2] <- as.factor(gsub("\\ Year", "", FL_Unemployment_0612[,2]))
+FL_Unemployment_0612[,1] <- as.factor(gsub("Miami-Dade", "Miami Dade", FL_Unemployment_0612[,1]))
+FL_Unemployment_0612[,2] <- as.numeric(as.character(FL_Unemployment_0612[,2]))
+FL_Unemployment_0612[,3] <- as.numeric(as.character(FL_Unemployment_0612[,3]))
+
+rownames(FL_Unemployment_0612) <- NULL
+str(FL_Unemployment_0612)
+
+
+```
+
+#Population Data
+
+```{r}
+#2010-2015
+url <- "https://www.census.gov/popest/data/counties/totals/2015/files/CO-EST2015-alldata.csv"
+
+popdata1015 <- read.csv(url, header=TRUE)
+popFL1015 <- popdata1015 %>% select(c(6,7,10:15)) %>% filter(STNAME=="Florida")
+
+#clean
+popFL1015 <- popFL1015 %>% filter(CTYNAME != "Florida") %>% select(2:length(popFL1015[1,]))
+head(popFL1015)
+
+#change to numeric
+popFL1015[,2:length(popFL1015[1,])] <- sapply(popFL1015[,2:length(popFL1015[1,])], as.character)
+popFL1015[,2:length(popFL1015[1,])] <- sapply(popFL1015[,2:length(popFL1015[1,])], as.numeric)
+
+#reshape (wide form to long form)
+popFL1015_long <- melt(popFL1015, id.vars= "CTYNAME", measure.vars= c("POPESTIMATE2010", "POPESTIMATE2011", "POPESTIMATE2012", "POPESTIMATE2013", "POPESTIMATE2014", "POPESTIMATE2015"))
+head(popFL1015_long)
+
+#cleaning county names
+names(popFL1015_long) <- c("County", "Year", "population")
+
+popFL1015_long[,1] <- as.factor(gsub("\\ County", "", popFL1015_long[,1]))
+popFL1015_long[,2] <- as.factor(gsub("[A-Z]", "", popFL1015_long[,2]))
+popFL1015_long[,1] <- as.factor(gsub("Miami-Dade", "Miami Dade", popFL1015_long[,1]))
+
+str(popFL1015_long)
+```
+
+```{r}
+#2000-2009
+url <- "https://www.census.gov/popest/data/intercensal/county/files/CO-EST00INT-TOT.csv"
+
+popdata0009 <- read.csv(url, header=TRUE)
+popFL0009 <- popdata0009 %>% select(c(6,7,9:18)) %>% filter(STNAME=="Florida")
+popFL0009 <- popFL0009 %>% filter(CTYNAME != "Florida") %>% select(2:length(popFL0009[1,])) 
+
+popFL0009[,2:length(popFL0009[1,])] <- sapply(popFL0009[,2:length(popFL0009[1,])], as.character)
+popFL0009[,2:length(popFL0009[1,])] <-sapply(popFL0009[,2:length(popFL0009[1,])], as.numeric)
+
+popFL0009_long <- melt(popFL0009, id.vars= "CTYNAME", measure.vars= c("POPESTIMATE2000", "POPESTIMATE2001", "POPESTIMATE2002", "POPESTIMATE2003", "POPESTIMATE2004", "POPESTIMATE2005", "POPESTIMATE2006", "POPESTIMATE2007", "POPESTIMATE2008", "POPESTIMATE2009"))
+
+names(popFL0009_long) <- c("County", "Year", "population")
+
+#clean up county names
+popFL0009_long[,1] <- as.factor(gsub("\\ County", "", popFL0009_long[,1]))
+popFL0009_long[,1] <- as.factor(gsub("Miami-Dade", "Miami Dade", popFL0009_long[,1]))
+popFL0009_long[,2] <- as.factor(gsub("[A-Z]", "", popFL0009_long[,2]))
+popFL0015 <- rbind(popFL0009_long, popFL1015_long)
+popFL0015$Year <- as.integer(as.character(popFL0015$Year))
+
+str(popFL0015)
+```
+
+```{r,eval=FALSE}
+write.csv(popFL0015,"~/School/Fall 16/EDA/data/FLpopulation.csv")
+```
+
+```{r,message=FALSE}
+#crime rates
+FCdata <- inner_join(FL_Crime_0612, popFL0015)
+
+FCdata <- FCdata %>% mutate(Assault_Rate = 10000*Simple.Assault/population) %>% mutate(Manslaughter_Rate = 10000*Manslaughter/population) %>% mutate(Drug_Rate = 10000*Drug.Arrest/population) %>% mutate(Embezzlement_Rate = 10000*Embezzlement/population) %>% mutate(Fraud_Rate = 10000*Fraud/population)
+
+str(FCdata)
+```
+
+```{r}
+#join crime, edu, and unemployment dfs
+big_frame <- full_join(FCdata,FL_edu_0912, by = c("County","Year"))
+big_frame <- full_join(big_frame, FL_Unemployment_0612, by = c("County","Year"))
+str(big_frame)
+```
+
+
+
+#now for the fun stuff!
+
+
+##Distributions
+
+Assault Rate:
+
+```{r,tidy=TRUE,echo=FALSE,warning=FALSE}
+ggplot(big_frame, aes(x=Assault_Rate)) + 
+  geom_histogram(binwidth=1)
+```
+
+Education:
+
+```{r,tidy=TRUE,echo=FALSE,warning=FALSE}
+ggplot(big_frame, aes(x=HS25up)) + 
+  geom_histogram(binwidth=1)
+
+ggplot(big_frame, aes(x=bachelors25up)) +
+  geom_histogram(binwidth=1)
+```
+
+Unemployment:
+
+```{r,tidy=TRUE,echo=FALSE,}
+ggplot(big_frame, aes(x=Unemployment_Rate)) + 
+  geom_histogram(binwidth=.2)
+```
+
+#Boxplots
+
+```{r,echo=FALSE}
+is_outlier <- function(x) {
+  return(x < quantile(x, 0.25) - 1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+}
+```
+
+####Assault Rates
+```{r,echo=FALSE}
+outliers <- big_frame[which(big_frame$Year == 2006),][which(is_outlier(big_frame[which(big_frame$Year == 2006),]$Assault_Rate) == TRUE),][,c(1,12,14)]
+for (i in 2007:2012){
+  outliers <- rbind(outliers,big_frame[which(big_frame$Year == i),][which(is_outlier(big_frame[which(big_frame$Year == i),]$Assault_Rate) == TRUE),][,c(1,12,14)])
+}
+
+ggplot(data=big_frame, aes(x=as.factor(Year), y=Assault_Rate)) +
+  geom_boxplot() +
+  geom_point(data=outliers,aes(x=as.factor(Year),y=Assault_Rate,color = County))
+
+```
+
+####Educational Attainment
+```{r,echo=FALSE,warning=FALSE}
+small_frame <- big_frame[which(complete.cases(big_frame) == TRUE),]
+outliers <- small_frame[which(small_frame$Year == 2006),][which(is_outlier(small_frame[which(small_frame$Year == 2006),]$HS25up) == TRUE),][,c(1,12,20)]
+for (i in 2007:2012){
+  outliers <- rbind(outliers,small_frame[which(small_frame$Year == i),][which(is_outlier(small_frame[which(small_frame$Year == i),]$HS25up) == TRUE),][,c(1,12,20)])
+}
+
+ggplot(data=big_frame, aes(x=as.factor(Year), y=HS25up)) + 
+  geom_boxplot() +
+  geom_point(data=outliers,aes(x=as.factor(Year),y=HS25up,color = County))
+
+ggplot(data=big_frame, aes(x=as.factor(Year), y=bachelors25up)) + 
+  geom_boxplot()
+```
+
+####Unemployment rates
+```{r,echo=FALSE}
+outliers <- big_frame[which(big_frame$Year == 2006),][which(is_outlier(big_frame[which(big_frame$Year == 2006),]$Unemployment_Rate) == TRUE),][,c(1,12,22)]
+for (i in 2007:2012){
+  outliers <- rbind(outliers,big_frame[which(big_frame$Year == i),][which(is_outlier(big_frame[which(big_frame$Year == i),]$Unemployment_Rate) == TRUE),][,c(1,12,22)])
+}
+
+ggplot(data=big_frame, aes(x=as.factor(Year), y=Unemployment_Rate)) + 
+  geom_boxplot() +
+  geom_point(data=outliers,aes(x=as.factor(Year),y=Unemployment_Rate,color = County))
+```
+
+####Fraud rates
+```{r,echo=FALSE}
+outliers <- big_frame[which(big_frame$Year == 2006),][which(is_outlier(big_frame[which(big_frame$Year == 2006),]$Fraud_Rate) == TRUE),][,c(1,12,18)]
+for (i in 2007:2012){
+  outliers <- rbind(outliers,big_frame[which(big_frame$Year == i),][which(is_outlier(big_frame[which(big_frame$Year == i),]$Fraud_Rate) == TRUE),][,c(1,12,18)])
+}
+
+ggplot(data=big_frame, aes(x=as.factor(Year), y=Fraud_Rate)) + 
+  geom_boxplot() + 
+  geom_point(data=outliers,aes(x=as.factor(Year),y=Fraud_Rate,color = County))
+```
+
+
+####Drug arrest rates
+```{r,echo=FALSE}
+outliers <- big_frame[which(big_frame$Year == 2006),][which(is_outlier(big_frame[which(big_frame$Year == 2006),]$Drug_Rate) == TRUE),][,c(1,12,16)]
+for (i in 2007:2012){
+  outliers <- rbind(outliers,big_frame[which(big_frame$Year == i),][which(is_outlier(big_frame[which(big_frame$Year == i),]$Drug_Rate) == TRUE),][,c(1,12,16)])
+}
+
+ggplot(data=big_frame, aes(x=as.factor(Year), y=Drug_Rate)) + 
+  geom_boxplot() +
+  geom_point(data=outliers,aes(x=as.factor(Year),y=Drug_Rate,color = County))
+```
+
+####Manslaughter rates
+```{r,echo=FALSE}
+outliers <- big_frame[which(big_frame$Manslaughter_Rate > .75),][,c(1,12,15)]
+
+
+ggplot(data=big_frame, aes(x=as.factor(Year), y=Manslaughter_Rate)) + 
+  geom_boxplot() +
+  geom_point(data=outliers,aes(x=as.factor(Year),y=Manslaughter_Rate, color = County))
+```
+
+####Embezzlement rates
+```{r,echo=FALSE}
+outliers <- big_frame[which(big_frame$Embezzlement_Rate > 2),][,c(1,12,17)]
+
+ggplot(data=big_frame, aes(x=as.factor(Year), y=Embezzlement_Rate)) + 
+  geom_boxplot() +
+  geom_point(data=outliers,aes(x=as.factor(Year),y=Embezzlement_Rate,color = County))
+```
+
+
+##unemployment vs education
+
+
+```{r,echo=FALSE,warning=FALSE}
+ggplot(data=big_frame, aes(x=Unemployment_Rate, y=bachelors25up)) + 
+  geom_point() +
+  geom_smooth(method="lm")
+```
+
+```{r}
+cor(big_frame$Unemployment_Rate,big_frame$bachelors25up,use="complete")
+```
+
+##Unemployment and drug arrests
+```{r,echo=FALSE}
+ggplot(data=big_frame, aes(x=Unemployment_Rate, y=Drug_Rate)) + 
+  geom_point(aes(color=as.factor(Year)))
+
+ggplot(data=big_frame, aes(x=Unemployment_Rate, y=Drug_Rate)) + 
+  geom_point() +
+  geom_smooth(method="lm")
+
+cor(big_frame$Unemployment_Rate,big_frame$Drug_Rate,use="complete")
+```
+
+##Education and drug arrests
+```{r,echo=FALSE,warning=FALSE}
+
+ggplot(data=big_frame, aes(x=bachelors25up, y=Drug_Rate)) + 
+  geom_point() +
+  geom_smooth(method="lm")
+```
+```{r,warning=FALSE}
+cor(big_frame$bachelors25up,big_frame$Drug_Rate,use="complete")
+```
+
+
+
+##education and assault
+```{r,echo=FALSE,warning=FALSE}
+
+ggplot(data=big_frame, aes(x=bachelors25up, y=Assault_Rate)) + 
+  geom_point() +
+  geom_smooth(method="lm")
+```
+
+```{r}
+cor(big_frame$bachelors25up,big_frame$Assault_Rate,use="complete")
+```
+
+##education and manslaughter
+
+```{r,echo=FALSE,warning=FALSE}
+
+ggplot(data=big_frame, aes(x=bachelors25up, y=Manslaughter_Rate)) + 
+  geom_point() +
+  geom_smooth(method="lm")
+```
+
+```{r,warning=FALSE}
+cor(big_frame$bachelors25up,big_frame$Manslaughter_Rate,use="complete")
+```
+
+#education and fraud
+
+```{r,echo=FALSE,warning=FALSE}
+ggplot(data=big_frame, aes(x=bachelors25up, y=Fraud_Rate)) + 
+  geom_point() +
+  geom_smooth(method="lm")
+```
+```{r}
+cor(big_frame$bachelors25up,big_frame$Fraud_Rate,use="complete")
+```
+
+
+

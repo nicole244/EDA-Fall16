@@ -1,0 +1,158 @@
+---
+title: "Exercise 9"
+author: "Nicole Navarro"
+date: "October 3, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###1. Read the data into memory as a csv file
+
+```{R, eval=TRUE}
+#get urls
+data_url<-"https://archive.ics.uci.edu/ml/machine-learning-databases/hepatitis/hepatitis.data"
+names_url<-"https://archive.ics.uci.edu/ml/machine-learning-databases/hepatitis/hepatitis.names"
+
+#download files
+#download.file(url,"~/school/fall 16/EDA/data/hepatitis_data.csv")
+#download.file(names_url,"~/school/fall 16/EDA/data/hepatitis_names.txt")
+
+#read into R
+hepatitis_data<-read.csv("~/school/fall 16/EDA/data/hepatitis_data.csv", header=FALSE)
+```
+
+###2. Name the features as described in the names file
+
+```{R, eval=TRUE}
+
+colnames(hepatitis_data)<- c("class","age","sex","steroid","antivirals","fatigue","malaise","anorexia","liver big","liver firm","spleen palpable","spiders","ascites","varices","bilirubin","alk phosphate","sgot","albumin","protime","histology")
+```
+
+###3. Write the result to memory as a csv file
+
+```{R, eval=TRUE}
+write.csv(hepatitis_data,"~/school/fall 16/EDA/data/hepatitis_data_headers.csv",row.names=FALSE)
+```
+
+###4. How many complete cases are there?
+
+```{R, eval=TRUE}
+hepatitis_data[hepatitis_data == "?"] <- NA
+#another way to do this is by levels(x)[levels(x)=="?"]<-na
+#for each column that needs it
+#this actually gets rid of ? as a factor completely so NA is just missing data
+
+complete_cases<-(complete.cases(hepatitis_data))
+#number of complete cases
+sum(complete_cases)
+#percent of complete cases
+sum(complete_cases)/nrow(hepatitis_data)
+```
+
+###5. Subsetting the data on Age, Sex, Bilirubin, ALK, SGOT and Albumin, compute the number of missing values for the Bilirubin feature. Convert the last four features to numeric values. How many complete cases are there for the subsetted frame?
+
+```{R,eval=TRUE}
+subset1<-hepatitis_data[c("age","sex","bilirubin","alk phosphate","sgot","albumin")]
+
+#number of missing values for bilirubin
+length(which(is.na(subset1[c("bilirubin")])))
+
+#convert factor variables to numeric
+subset1[,3]<-as.numeric((as.character(subset1[,3])))
+subset1[,4]<-as.numeric((as.character(subset1[,4])))
+subset1[,5]<-as.numeric((as.character(subset1[,5])))
+subset1[,6]<-as.numeric((as.character(subset1[,6])))
+
+#number of complete cases
+sum(complete.cases(subset1))
+#percent of complete cases
+sum(complete.cases(subset1))/nrow(subset1)
+```
+
+###6. Are there any outliers in the Bilirubin and Albumin entries?
+
+
+```{R,eval=TRUE}
+plot(subset1$bilirubin)
+boxplot(subset1$bilirubin)
+```
+It appears there may be some outliers on the higher end of the data. After doing some research into Bilirubin, I believe that this variable is giving us total bilirubin levels. While normal total bilirubin levels are between 0 and 1.9, it is possible for levels to reach much higher than the highest results shown in our data. Bilirubin levels of close to 8 like the points that exist in our data are certainly possible, so despite looking like outliers, I am unable to truly determine if the high values shown in our data are outliers or relevant pieces of data without more information.
+
+```{R,eval=TRUE}
+plot(subset1$albumin)
+boxplot(subset1$albumin)
+```
+Normal Albumin levels are typically between 3.5 and 5.5. Based on the plots, I would guess that the high point of 6.4 is most likely an outlier. The low point of 2.1 may not necessarily be an outlier because there exist many data points below the typical levels.
+
+###7. Bin the age variables in units of decades
+
+```{R,eval=TRUE}
+age_decades<-with(subset1,cut(age,breaks = c(0,10,20,30,40,50,60,70,80),include.lowest = TRUE))
+subset1$decades<-age_decades
+```
+
+###8. Aggregate the data to obtain mean readings for the last 4 variables as a function of sex and age, with age as a binned factor.
+
+For sex:
+1=male
+2=female
+```{R,eval=TRUE}
+aggregate(bilirubin ~ sex + decades,subset1,mean)
+aggregate(subset1$`alk phosphate` ~ sex + decades,subset1,mean)
+aggregate(sgot ~ sex + decades,subset1,mean)
+aggregate(albumin ~ sex + decades,subset1,mean)
+```
+
+###9. Sort the data on the Bilirubin columns (ascending)
+
+```{R,eval=TRUE}
+subset1<-subset1[order(subset1$bilirubin,decreasing=FALSE),]
+```
+
+###10. Standardize Bilirubin and Albumin and plot the outcome as a scatterplot
+
+```{R,eval=TRUE}
+standard_trans<-function(x) {
+  M <- max(x, na.rm=TRUE)
+  m <- min(x, na.rm=TRUE)
+  Y <- (x-m)/(M-m)
+  return(Y)
+}
+
+#standardize the data
+subset1$bilirubin <- standard_trans(subset1$bilirubin)
+subset1$albumin <- standard_trans(subset1$albumin)
+
+#plot
+plot(subset1$bilirubin)
+plot(subset1$albumin)
+
+```
+
+###11. Consider the data frame consisting of the complete cases for the variables Bilirubin, ALK, SGOT and Albumin. What fraction of the variance does the first principal component account for?
+
+```{R,eval=TRUE}
+
+clean_subset <- subset1[which(complete.cases(subset1[,3:6])),c("age","sex","bilirubin","alk phosphate","sgot","albumin")]
+
+test<- subset1[complete.cases(subset1[,3:6]),3:6]
+
+#PCA = principal component analysis
+#may need to also normalize data???
+#log transform gets rid of skew -- (can't have 0s) helps with PCA and other machine learning algorithms
+
+#stats package -- function prcomp
+hep_pca <- prcomp(test)
+summary(hep_pca)
+ 
+ffffe34```
+
+###12. Subsetting the data on Age, Sex, Steroid and Antivirals columns and join the resulting data frame with the data frame of complete cases for Age, Sex, Bilirubin, ALK, SGOT and Albumin. What are the dimensions of the resulting frame?
+
+```{R,eval=TRUE}
+clean_data <- merge(clean_subset[,1:6],hepatitis_data[,c("age","sex","steroid","antivirals","bilirubin","alk phosphate","sgot","albumin")],all.x=TRUE,sort=FALSE)
+dim(clean_data)
+```
